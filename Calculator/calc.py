@@ -1,11 +1,14 @@
-RPi.GPIO as GPIO import Adafruit_CharLCD as LCD
-Then we need to set the mode of GPIO. After setting this mode, the GPIO number and the physical pin number on the Raspberry Pi board are corresponding.
+import math
+import time
+import RPi.GPIO as GPIO
+import Adafruit_CharLCD as LCD
+
 # set GPIO board mode
 GPIO.setmode(GPIO.BOARD)
-Then create two lists to distinguish the independent key data and the matrix key data, initialize the lcd, and then set the id of the matrix button and the corresponding GPIO port of the row and column.
 a=[]
 b=[]
-# matrix button id # define LCD column and row size for 16x2 LCD
+# matrix button id 
+# define LCD column and row size for 16x2 LCD
 lcd_columns=16
 lcd_rows=2
 # initialize the LCD using the pins
@@ -18,11 +21,10 @@ columnPins=[33,35,37,22]
 # define four inputs with pull up resistor
 for i in range(len(rowPins)):
     GPIO.setup(rowPins[i], GPIO.IN, pull_up_down = GPIO.PUD_UP)
-    # define four outputs and set to high
+# define four outputs and set to high
     for j in range(len(columnPins)):
         GPIO.setup(columnPins[j], GPIO.OUT)
         GPIO.output(columnPins[j], 1)
-In the activateButton () function, we get what the button is pressed and display it on the lcd, then add the pressed button value to the a list.
 def activateButton( rowPin, colPin):
     # get the button index
     btnIndex = buttonIDs[rowPin][colPin] - 1
@@ -30,7 +32,11 @@ def activateButton( rowPin, colPin):
         
     a.append(btnIndex+1)
     return btnIndex+1
-In the indeButton () function, we need to define the gpio of the button, and what is represented when the different GPIO port buttons are pressed and displayed on the lcd, and finally add the button value to the b list. def indeButtons():
+def buttonHeldDown(pin):
+    if(GPIO.input(rowPins[pin]) == 0):
+        return True
+        return False
+def indeButtons():
     buttons = [37,33,35,22]
     for button in buttons:
         GPIO.setup(button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -49,7 +55,6 @@ In the indeButton () function, we need to define the gpio of the button, and wha
             b.append(button)
             time.sleep(0.5)
             return button
-In the matrixButtons () function, we will set the mode of the matrix button to determine if the button has been pressed, if it is pressed, call the activateButton function (display the pressed button and add it to the a list), and finally restore the button state.
 def matrixButtons():
      # initial the button matrix
      
@@ -62,6 +67,8 @@ def matrixButtons():
                  if GPIO.input(rowPins[i]) == 0:
                      # button pressed, activate it
                      activateButton(i,j)
+                  #   print("button " + str(activateButton) + "pressed")
+                  #   lcd.message('{0}'.format(activateButton))
                      # do nothing while button is being held down
                      while(buttonHeldDown(i)):
                          pass
@@ -69,3 +76,46 @@ def matrixButtons():
               # return each output pin to high
              GPIO.output(columnPins[j],1)
          break
+def add(a):
+    count=a[-2]+a[-1]
+    return count
+def sub(a):
+    count=a[-2]-a[-1]
+    return count
+def mul(a):
+    count=a[-2]*a[-1]
+    return count
+def div(a):
+    count=a[-2]/a[-1]
+    return count
+def touch():
+    # define touch pin
+    touch_pin = 11
+    #set GPIO pin to INPUT
+    GPIO.setup(touch_pin,GPIO.IN)#,pull_up_down=GPIO.PUD_UP)
+    # check if touch detected
+    if(GPIO.input(touch_pin)):
+        lcd.message('=')
+        if(indeButtons):
+            if(b[-1]=='+'):
+                count=add(a)
+            elif(b[-1]=='-'):
+                count=sub(a)
+            elif(b[-1]=="*"):
+                count=mul(a)
+            else:
+                count=div(a)
+        a.append(count)
+        lcd.message('{0}'.format(count))
+    time.sleep(0.5)
+try:
+    while True:
+        lcd.set_backlight(0)
+        matrixButtons()
+        indeButtons()
+        touch() 
+except KeyboardInterrupt:
+    lcd.clear()
+    lcd.set_backlight(1)
+    cleanup()
+                    
